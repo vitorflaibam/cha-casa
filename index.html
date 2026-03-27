@@ -1,61 +1,348 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lista de Presentes</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
-    body { font-family: Arial; }
-    .grid { display: flex; flex-wrap: wrap; gap: 20px; }
-    .item { width: 200px; border: 1px solid #ccc; padding: 10px; }
-    img { width: 100%; }
+    :root {
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #111827;
+      --primary-2: #2563eb;
+      --border: #e5e7eb;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .hero {
+      background: radial-gradient(circle at top left, #eef2ff 0, #ffffff 45%);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 14px 0 18px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .thumb {
+      aspect-ratio: 1 / 1;
+      background: #f3f4f6;
+      width: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .content {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1.05rem;
+      line-height: 1.25;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .price {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--primary);
+      flex: 1 1 auto;
+      min-width: 120px;
+    }
+
+    .link.primary {
+      background: var(--primary-2);
+      color: white;
+      border-color: var(--primary-2);
+    }
+
+    .empty {
+      padding: 18px;
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+      color: var(--muted);
+      background: white;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .hero {
+        padding: 18px;
+      }
+
+      .link {
+        min-width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="container">
+    <section class="hero">
+      <h1>Lista de presentes</h1>
+      <p>Escolha um item e clique em “Quero comprar” para me chamar no WhatsApp.</p>
+    </section>
 
-<h1>Lista de Presentes 🎁</h1>
-<div class="grid" id="lista"></div>
+    <div class="toolbar">
+      <button class="btn active" id="sortDefault">Ordem da lista</button>
+      <button class="btn" id="sortPrice">Mais barato primeiro</button>
+    </div>
 
-<script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQcu-LxFsNU58tFaC59z5XWoCA4HNX9CXRk1mHhKWZXvWTxX7QAiwJXK83u-yxBwR0NnuHFaDwEkYQR/pub?output=csv";
+    <div id="list" class="grid"></div>
+  </div>
 
-function parseCSV(text) {
-  const linhas = text.trim().split("\n");
+  <script>
+    const CSV_URL = "COLE_AQUI_A_URL_DO_CSV";
+    const WHATSAPP_NUMBER = "5511950597149";
+    const WHATSAPP_TEXT = "Olá! Quero informar intenção de compra de um item da lista.";
 
-  const headers = linhas[0].split(",");
-  
-  return linhas.slice(1).map(linha => {
-    const valores = linha.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+    let items = [];
+    let sortMode = "default";
 
-    let obj = {};
-    headers.forEach((header, i) => {
-      obj[header.trim()] = valores[i]?.replace(/^"|"$/g, "");
+    function normalizeUrl(url) {
+      const value = String(url || "").trim();
+      if (!value) return "#";
+      if (/^(https?:\/\/|mailto:|tel:|\/\/)/i.test(value)) return value;
+      return `https://${value}`;
+    }
+
+    function parsePrice(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return Number.POSITIVE_INFINITY;
+
+      const cleaned = raw
+        .replace(/[R$\s]/g, "")
+        .replace(/\./g, "")
+        .replace(",", ".")
+        .replace(/[^\d.-]/g, "");
+
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+    }
+
+    function formatPrice(value) {
+      const n = parsePrice(value);
+      if (!Number.isFinite(n) || n === Number.POSITIVE_INFINITY) return "";
+      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function whatsappLink() {
+      return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_TEXT)}`;
+    }
+
+    function render() {
+      const list = document.getElementById("list");
+      const data = [...items];
+
+      if (sortMode === "price") {
+        data.sort((a, b) => {
+          const pa = parsePrice(a.preco);
+          const pb = parsePrice(b.preco);
+          if (pa === pb) return a.originalIndex - b.originalIndex;
+          return pa - pb;
+        });
+      } else {
+        data.sort((a, b) => a.originalIndex - b.originalIndex);
+      }
+
+      if (!data.length) {
+        list.innerHTML = `<div class="empty">Nenhum item encontrado.</div>`;
+        return;
+      }
+
+      list.innerHTML = data.map(item => {
+        const image = item.imagem ? normalizeUrl(item.imagem) : "";
+        const buyLink = normalizeUrl(item.link);
+        const priceText = formatPrice(item.preco);
+
+        return `
+          <article class="card">
+            ${image ? `<img class="thumb" src="${image}" alt="${item.nome || "Produto"}" loading="lazy" />` : ""}
+            <div class="content">
+              <h2 class="title">${item.nome || ""}</h2>
+              <p class="desc">${item.descricao || ""}</p>
+
+              <div class="meta">
+                <div class="price">${priceText || "Preço sob consulta"}</div>
+              </div>
+
+              <div class="actions">
+                <a class="link" href="${buyLink}" target="_blank" rel="noopener noreferrer">Abrir produto</a>
+                <a class="link primary" href="${whatsappLink()}" target="_blank" rel="noopener noreferrer">Quero comprar</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function setActiveButton(mode) {
+      document.getElementById("sortDefault").classList.toggle("active", mode === "default");
+      document.getElementById("sortPrice").classList.toggle("active", mode === "price");
+    }
+
+    async function loadCSV() {
+      const response = await fetch(`${CSV_URL}${CSV_URL.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+        cache: "no-store"
+      });
+      const text = await response.text();
+
+      const parsed = Papa.parse(text, {
+        header: true,
+        delimiter: ";",
+        skipEmptyLines: true,
+        transformHeader: h => h.trim(),
+        transform: v => String(v || "").trim()
+      });
+
+      items = (parsed.data || []).map((row, index) => ({
+        originalIndex: index,
+        nome: row.nome || "",
+        descricao: row.descricao || "",
+        imagem: row.imagem || "",
+        link: row.link || "",
+        preco: row.preco || ""
+      }));
+
+      render();
+    }
+
+    document.getElementById("sortDefault").addEventListener("click", () => {
+      sortMode = "default";
+      setActiveButton(sortMode);
+      render();
     });
 
-    return obj;
-  });
-}
+    document.getElementById("sortPrice").addEventListener("click", () => {
+      sortMode = "price";
+      setActiveButton(sortMode);
+      render();
+    });
 
-fetch(CSV_URL)
-  .then(res => res.text())
-  .then(text => {
-    const data = parseCSV(text);
-    const container = document.getElementById("lista");
-
-    data.forEach(item => {
-      container.innerHTML += `
-        <div class="item">
-          <img src="${item.imagem}" />
-          <h3>${item.nome}</h3>
-          <p>${item.descricao}</p>
-          <a href="${item.link}" target="_blank">
-            Comprar
-          </a>
+    loadCSV().catch(err => {
+      console.error(err);
+      document.getElementById("list").innerHTML = `
+        <div class="empty">
+          Erro ao carregar o CSV. Verifique a URL publicada e o separador da planilha.
         </div>
       `;
     });
-  })
-  .catch(err => console.error("Erro ao carregar CSV:", err));
-</script>
-
+  </script>
 </body>
 </html>
