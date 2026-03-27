@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Lista de Presentes</title>
+  <style>
+    body { font-family: Arial; }
+    .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+    .item { width: 200px; border: 1px solid #ccc; padding: 10px; }
+    img { width: 100%; }
+  </style>
+</head>
+<body>
+
+<h1>Lista de Presentes 🎁</h1>
+<div class="grid" id="lista"></div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQcu-LxFsNU58tFaC59z5XWoCA4HNX9CXRk1mHhKWZXvWTxX7QAiwJXK83u-yxBwR0NnuHFaDwEkYQR/pub?output=csv";
+
+function parseCSV(text) {
+  const linhas = text.trim().split("\n");
+
+  const headers = linhas[0].split(",");
+  
+  return linhas.slice(1).map(linha => {
+    const valores = linha.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+
+    let obj = {};
+    headers.forEach((header, i) => {
+      obj[header.trim()] = valores[i]?.replace(/^"|"$/g, "");
+    });
+
+    return obj;
+  });
+}
+
+fetch(CSV_URL)
+  .then(res => res.text())
+  .then(text => {
+    const data = parseCSV(text);
+    const container = document.getElementById("lista");
+
+    data.forEach(item => {
+      container.innerHTML += `
+        <div class="item">
+          <img src="${item.imagem}" />
+          <h3>${item.nome}</h3>
+          <p>${item.descricao}</p>
+          <a href="${item.link}" target="_blank">
+            Comprar
+          </a>
+        </div>
+      `;
+    });
+  })
+  .catch(err => console.error("Erro ao carregar CSV:", err));
+</script>
+
+</body>
+</html>
